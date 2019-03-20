@@ -1,7 +1,10 @@
 package todomvc_test_selenide;
 
 import com.codeborne.selenide.ElementsCollection;
+import com.codeborne.selenide.Selenide;
 import com.codeborne.selenide.SelenideElement;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 import org.openqa.selenium.By;
 import org.openqa.selenium.Keys;
@@ -10,23 +13,36 @@ import static com.codeborne.selenide.CollectionCondition.empty;
 import static com.codeborne.selenide.CollectionCondition.exactTexts;
 import static com.codeborne.selenide.Condition.*;
 import static com.codeborne.selenide.Selenide.*;
+import static io.github.bonigarcia.wdm.WebDriverManager.chromedriver;
 
 public class todomvc_Selenide_test {
 
     private static SelenideElement newTask = $("#new-todo");
     private static ElementsCollection tasks = $$("#todo-list>li");
 
+    @Before
+    public void openTodoMVC() {
+
+        chromedriver().version("2.46").setup();
+        open("http://todomvc.com/examples/emberjs/");
+        newTask.shouldBe(visible, enabled);
+    }
+
+    @After
+    public void clearData() {
+        Selenide.executeJavaScript("localStorage.clear()");
+    }
+
     @Test
     public void E2Etest_todomvc() {
 
-        openTodoMVC();
-        add("record A", "record B", "record C");
-        assertTasks("record A", "record B", "record C");
-        edit("record C", "edited record");
-        assertEdited("edited record");
-        remove("edited record");
-        toggle("record A", "record B");
-        assertItemsLeft("1");
+        addTasks();
+        assertTasks();
+        edit();
+        assertEdited();
+        remove();
+        toggle();
+        assertItemsLeft();
         filterCompleted();
         filterActive();
         filterAll();
@@ -36,48 +52,42 @@ public class todomvc_Selenide_test {
 
     }
 
-    private void openTodoMVC() {
-        open("http://todomvc.com/examples/emberjs/");
+    private static void addTasks() {
+        newTask.setValue("record A");
+        newTask.pressEnter();
         newTask.shouldBe(visible, enabled);
-
+        newTask.setValue("record B").pressEnter().shouldBe(visible, enabled);
+        newTask.setValue("record C").pressEnter();
     }
 
-    private void add(String taskText1, String taskText2, String taskText3) {
-        newTask.setValue(taskText1).pressEnter();
-        newTask.shouldBe(visible, enabled);
-        newTask.setValue(taskText2).pressEnter();
-        newTask.shouldBe(visible, enabled);
-        newTask.setValue(taskText3).pressEnter();
+    private void assertTasks() {
+        tasks.shouldHave(exactTexts("record A", "record B", "record C"));
     }
 
-    private void assertTasks(String taskText1, String taskText2, String taskText3) {
-        tasks.shouldHave(exactTexts(taskText1, taskText2, taskText3));
-    }
-
-    private void edit(String taskText, String taskTextedited) {
+    private void edit() {
         tasks.last().find("label").doubleClick();
-        tasks.last().$(".edit").sendKeys(Keys.chord(Keys.CONTROL, "a", Keys.DELETE), taskTextedited, Keys.ENTER);
+        tasks.last().$(".edit").sendKeys(Keys.chord(Keys.CONTROL, "a", Keys.DELETE), "edited record", Keys.ENTER);
     }
 
-    private void assertEdited(String taskTextedited) {
-        tasks.last().shouldHave(exactText(taskTextedited));
-
-    }
-
-    private void remove(String taskTextedited) {
-        tasks.find(exactText(taskTextedited)).hover().find(".destroy").shouldBe(visible, enabled).click();
+    private void assertEdited() {
+        tasks.last().shouldHave(exactText("edited record"));
 
     }
 
-    private void toggle(String taskText1, String taskText2) {
-        tasks.find(exactText(taskText1)).find(".toggle").click();
-        tasks.find(exactText(taskText1)).find(".toggle").click();
-        tasks.find(exactText(taskText2)).find(".toggle").click();
+    private void remove() {
+        tasks.find(exactText("edited record")).hover().find(".destroy").shouldBe(visible, enabled).click();
 
     }
 
-    private void assertItemsLeft(String itemsLeft) {
-        $("#todo-count>strong").shouldHave(exactText(itemsLeft));
+    private void toggle() {
+        tasks.find(exactText("record A")).find(".toggle").click();
+        tasks.find(exactText("record A")).find(".toggle").click();
+        tasks.find(exactText("record B")).find(".toggle").click();
+
+    }
+
+    private void assertItemsLeft() {
+        $("#todo-count>strong").shouldHave(exactText("1"));
 
     }
 
